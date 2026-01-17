@@ -1,0 +1,1140 @@
+
+"use client";
+
+const storage = {
+  get: (key: string) => {
+    if (typeof window === 'undefined') return null;
+    const value = localStorage.getItem(key);
+    return value ? { value } : null;
+  },
+  set: (key: string, value: string) => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(key, value);
+  },
+  delete: (key: string) => {
+    if (typeof window === 'undefined') return;
+    localStorage.removeItem(key);
+  }
+};
+
+
+
+
+
+
+
+import React, { useState, useEffect } from 'react';
+import { Download, Plus, Trash2, Calculator, Calendar, Upload, Eye, X, Lock, LogOut, DollarSign, TrendingUp, FileText, Unlock, Save } from 'lucide-react';
+
+const SalaryTracker = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  
+  const [sales, setSales] = useState([]);
+  const [availableMonths, setAvailableMonths] = useState([]);
+  const [selectedMonth, setSelectedMonth] = useState('');
+  const [newMonthInput, setNewMonthInput] = useState('');
+  const [viewingScreenshot, setViewingScreenshot] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saveStatus, setSaveStatus] = useState('');
+
+  // Check authentication on mount
+  useEffect(() => {
+    checkAuthentication();
+  }, []);
+
+  // Load data from storage on mount
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadData();
+    }
+  }, [isAuthenticated]);
+
+  // Auto-save when data changes
+  useEffect(() => {
+    if (!loading && sales.length > 0) {
+      saveData();
+    }
+  }, [sales, availableMonths, loading]);
+
+  const checkAuthentication = async () => {
+    try {
+      const authResult = await window.storage.get('salary-tracker-auth');
+      if (authResult && authResult.value === 'authenticated') {
+        setIsAuthenticated(true);
+      }
+    } catch (error) {
+      console.log('No previous authentication found');
+    } finally {
+      setCheckingAuth(false);
+    }
+  };
+
+  const handleLogin = async (e) => {
+    if (e) e.preventDefault();
+    const correctPassword = 'ibrahim@khan2026';
+    
+    if (passwordInput === correctPassword) {
+      setIsAuthenticated(true);
+      setPasswordError('');
+      setPasswordInput('');
+      try {
+        await window.storage.set('salary-tracker-auth', 'authenticated');
+      } catch (error) {
+        console.error('Error saving authentication:', error);
+      }
+    } else {
+      setPasswordError('Incorrect password. Please try again.');
+      setPasswordInput('');
+    }
+  };
+
+  const handleLogout = async () => {
+    setIsAuthenticated(false);
+    try {
+      await window.storage.delete('salary-tracker-auth');
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
+  };
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      
+      const salesResult = await window.storage.get('salary-tracker-sales');
+      const monthsResult = await window.storage.get('salary-tracker-months');
+      const selectedResult = await window.storage.get('salary-tracker-selected');
+
+      if (salesResult) {
+        const loadedSales = JSON.parse(salesResult.value);
+        setSales(loadedSales);
+      } else {
+        const initialSales = [
+          { id: 1, month: 'December 2024', clientName: 'Brook Games', email: '', discord: '', paymentType: 'Initial', totalAmount: 125, totalPaid: 125, totalRemaining: 0, gateway: '', product: 'Sample', dateOfSale: '', deadline: '', notes: '', screenshot: null },
+          { id: 2, month: 'December 2024', clientName: 'Yolo', email: '', discord: '', paymentType: 'Initial', totalAmount: 230, totalPaid: 230, totalRemaining: 0, gateway: '', product: '25 slot, 205 for pages', dateOfSale: '', deadline: '', notes: '', screenshot: null },
+          { id: 3, month: 'January 2026', clientName: 'Zeta Foxtrot', email: '', discord: '', paymentType: 'Initial', totalAmount: 120, totalPaid: 60, totalRemaining: 60, gateway: '', product: 'Furry character till bust', dateOfSale: '', deadline: '', notes: '', screenshot: null },
+          { id: 4, month: 'January 2026', clientName: 'Stephen', email: '', discord: '', paymentType: 'Initial', totalAmount: 200, totalPaid: 200, totalRemaining: 0, gateway: '', product: 'Story board', dateOfSale: '', deadline: '', notes: '', screenshot: null },
+          { id: 5, month: 'January 2026', clientName: 'Yolo', email: '', discord: '', paymentType: 'Remaining', totalAmount: 80, totalPaid: 80, totalRemaining: 0, gateway: '', product: 'Pages', dateOfSale: '', deadline: '', notes: '', screenshot: null },
+          { id: 6, month: 'January 2026', clientName: 'Tyler Scott', email: '', discord: '', paymentType: 'Initial', totalAmount: 350, totalPaid: 175, totalRemaining: 175, gateway: '', product: '30s ad creative + 30 sec vid', dateOfSale: '', deadline: '', notes: '', screenshot: null },
+          { id: 7, month: 'January 2026', clientName: 'Ace the', email: '', discord: '', paymentType: 'Initial', totalAmount: 150, totalPaid: 75, totalRemaining: 75, gateway: '', product: 'Emblem', dateOfSale: '', deadline: '', notes: '', screenshot: null },
+          { id: 8, month: 'January 2026', clientName: 'Reynae', email: '', discord: '', paymentType: 'Remaining', totalAmount: 350, totalPaid: 350, totalRemaining: 0, gateway: '', product: 'Pixel art character', dateOfSale: '', deadline: '', notes: '', screenshot: null },
+        ];
+        setSales(initialSales);
+      }
+
+      if (monthsResult) {
+        const loadedMonths = JSON.parse(monthsResult.value);
+        setAvailableMonths(loadedMonths);
+        if (selectedResult) {
+          setSelectedMonth(selectedResult.value);
+        } else if (loadedMonths.length > 0) {
+          setSelectedMonth(loadedMonths[0]);
+        }
+      } else {
+        const initialMonths = ['December 2024', 'January 2026'];
+        setAvailableMonths(initialMonths);
+        setSelectedMonth(initialMonths[0]);
+      }
+
+      setSaveStatus('✓ Data loaded');
+      setTimeout(() => setSaveStatus(''), 2000);
+    } catch (error) {
+      console.error('Error loading data:', error);
+      const initialMonths = ['December 2024', 'January 2026'];
+      setAvailableMonths(initialMonths);
+      setSelectedMonth(initialMonths[0]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveData = async () => {
+    try {
+      await window.storage.set('salary-tracker-sales', JSON.stringify(sales));
+      await window.storage.set('salary-tracker-months', JSON.stringify(availableMonths));
+      await window.storage.set('salary-tracker-selected', selectedMonth);
+      
+      setSaveStatus('✓ Saved');
+      setTimeout(() => setSaveStatus(''), 2000);
+    } catch (error) {
+      console.error('Error saving data:', error);
+      setSaveStatus('✗ Save failed');
+      setTimeout(() => setSaveStatus(''), 3000);
+    }
+  };
+
+  const calculateSalary = (totalSales) => {
+    const petrolAllowance = 2500;
+    const usdToRs = 280;
+    
+    if (totalSales < 30) {
+      return { baseSalary: 0, commission: 0, total: 0, petrol: 0, grandTotal: 0 };
+    } else if (totalSales >= 30 && totalSales < 70) {
+      return { 
+        baseSalary: 5000, 
+        commission: 0, 
+        total: 5000, 
+        petrol: petrolAllowance, 
+        grandTotal: 5000 + petrolAllowance 
+      };
+    } else if (totalSales >= 70 && totalSales < 400) {
+      const commission = Math.round(totalSales * usdToRs * 0.12);
+      return { 
+        baseSalary: 5000, 
+        commission, 
+        total: 5000 + commission, 
+        petrol: petrolAllowance, 
+        grandTotal: 5000 + commission + petrolAllowance 
+      };
+    } else {
+      const extraAmount = totalSales - 400;
+      const commission = Math.round(extraAmount * usdToRs * 0.12);
+      return { 
+        baseSalary: 35000, 
+        commission, 
+        total: 35000 + commission, 
+        petrol: petrolAllowance, 
+        grandTotal: 35000 + commission + petrolAllowance 
+      };
+    }
+  };
+
+  const getMonthStats = (month) => {
+    const monthSales = sales.filter(s => s.month === month);
+    const totalPaid = monthSales.reduce((sum, s) => sum + s.totalPaid, 0);
+    const totalRemaining = monthSales.reduce((sum, s) => sum + s.totalRemaining, 0);
+    const totalSales = totalPaid;
+    const salary = calculateSalary(totalSales);
+    
+    return { totalPaid, totalRemaining, totalSales, salary, count: monthSales.length };
+  };
+
+  const addNewSale = () => {
+    const newSale = {
+      id: Date.now(),
+      month: selectedMonth,
+      clientName: '',
+      email: '',
+      discord: '',
+      paymentType: 'Initial',
+      totalAmount: 0,
+      totalPaid: 0,
+      totalRemaining: 0,
+      gateway: '',
+      product: '',
+      dateOfSale: '',
+      deadline: '',
+      notes: '',
+      screenshot: null,
+      isLocked: false // New field to track if sale is locked
+    };
+    setSales([...sales, newSale]);
+  };
+
+  const lockSale = (id) => {
+    setSales(sales.map(sale => {
+      if (sale.id === id) {
+        // Check if all required fields are filled
+        if (sale.clientName && sale.totalAmount > 0) {
+          return { ...sale, isLocked: true };
+        } else {
+          alert('Please fill in at least Client Name and Total Amount before saving.');
+          return sale;
+        }
+      }
+      return sale;
+    }));
+  };
+
+  const unlockSale = (id) => {
+    if (window.confirm('Are you sure you want to unlock this sale for editing? This will allow all fields to be modified.')) {
+      setSales(sales.map(sale => 
+        sale.id === id ? { ...sale, isLocked: false } : sale
+      ));
+    }
+  };
+
+  const addNewMonth = () => {
+    if (newMonthInput && !availableMonths.includes(newMonthInput)) {
+      const updatedMonths = [...availableMonths, newMonthInput];
+      setAvailableMonths(updatedMonths);
+      setSelectedMonth(newMonthInput);
+      setNewMonthInput('');
+    }
+  };
+
+  const deleteMonth = (monthToDelete) => {
+    if (window.confirm(`Are you sure you want to delete "${monthToDelete}" and all its sales data?`)) {
+      setSales(sales.filter(s => s.month !== monthToDelete));
+      const updatedMonths = availableMonths.filter(m => m !== monthToDelete);
+      setAvailableMonths(updatedMonths);
+      if (selectedMonth === monthToDelete && updatedMonths.length > 0) {
+        setSelectedMonth(updatedMonths[0]);
+      }
+    }
+  };
+
+  const updateSale = (id, field, value) => {
+    setSales(sales.map(sale => {
+      if (sale.id === id) {
+        const updated = { ...sale, [field]: value };
+        return updated;
+      }
+      return sale;
+    }));
+  };
+
+  const handleScreenshotUpload = (id, file) => {
+    if (file && file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        updateSale(id, 'screenshot', e.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeScreenshot = (id) => {
+    updateSale(id, 'screenshot', null);
+  };
+
+  const deleteSale = (id) => {
+    setSales(sales.filter(s => s.id !== id));
+  };
+
+  const exportToCSV = () => {
+    const headers = ['Month', 'Client Name', 'Email', 'Discord', 'Payment Type', 'Total Amount ($)', 'Total Paid ($)', 'Total Remaining ($)', 'Gateway', 'Product', 'Date of Sale'];
+    const rows = sales.map(s => [
+      s.month, s.clientName, s.email, s.discord, s.paymentType, 
+      s.totalAmount, s.totalPaid, s.totalRemaining, s.gateway, 
+      s.product, s.dateOfSale
+    ]);
+    
+    const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'salary_tracker.csv';
+    a.click();
+  };
+
+  const exportToPDF = () => {
+    window.print();
+  };
+
+  const filteredSales = sales.filter(s => s.month === selectedMonth);
+  const monthStats = selectedMonth ? getMonthStats(selectedMonth) : { totalPaid: 0, totalRemaining: 0, totalSales: 0, salary: { baseSalary: 0, commission: 0, petrol: 0, grandTotal: 0 }, count: 0 };
+
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-500 to-pink-500 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-white border-t-transparent mx-auto mb-4"></div>
+          <p className="text-white text-lg font-medium">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-500 to-pink-500 flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl shadow-2xl p-8 sm:p-10 w-full max-w-md">
+          <div className="text-center mb-8">
+            <div className="bg-gradient-to-br from-purple-500 to-pink-500 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg transform rotate-3">
+              <Calculator size={40} className="text-white transform -rotate-3" />
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
+              Descouts Solutions
+            </h1>
+            <p className="text-slate-600 text-sm sm:text-base">Salary & Sales Tracker</p>
+          </div>
+          
+          <form onSubmit={handleLogin} className="space-y-6">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                Password
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
+                <input
+                  type="password"
+                  value={passwordInput}
+                  onChange={(e) => {
+                    setPasswordInput(e.target.value);
+                    setPasswordError('');
+                  }}
+                  className="w-full pl-11 pr-4 py-3 border-2 border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+                  placeholder="Enter your password"
+                  autoFocus
+                />
+              </div>
+              {passwordError && (
+                <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-600 flex items-center gap-2">
+                    <X size={16} />
+                    {passwordError}
+                  </p>
+                </div>
+              )}
+            </div>
+            
+            <button
+              type="submit"
+              onClick={handleLogin}
+              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3.5 rounded-xl font-semibold hover:from-purple-700 hover:to-pink-700 transition duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-105"
+            >
+              <Lock size={18} />
+              Login to Dashboard
+            </button>
+          </form>
+          
+          <div className="mt-8 pt-6 border-t border-slate-200">
+            <p className="text-xs text-slate-500 text-center flex items-center justify-center gap-2">
+              <Lock size={12} />
+              Protected access • Authorized users only
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading your data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-pink-50">
+      <div className="max-w-7xl mx-auto p-3 sm:p-4 lg:p-6">
+        {/* Header */}
+        <div className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 mb-4 sm:mb-6 border border-purple-100">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex-1">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                Descouts Solutions
+              </h1>
+              <p className="text-slate-600 mt-1 text-sm sm:text-base">Salary & Sales Tracker</p>
+              <div className="flex items-center gap-2 mt-2">
+                {saveStatus && (
+                  <span className="text-xs sm:text-sm text-green-600 font-medium bg-green-50 px-2 py-1 rounded-full">
+                    {saveStatus}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 bg-slate-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-slate-700 transition text-sm sm:text-base shadow-md"
+              >
+                <LogOut size={16} />
+                <span className="hidden sm:inline">Logout</span>
+              </button>
+              <button
+                onClick={exportToPDF}
+                className="flex items-center gap-2 bg-red-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-red-700 transition text-sm sm:text-base shadow-md"
+              >
+                <Download size={16} />
+                <span className="hidden sm:inline">PDF</span>
+              </button>
+              <button
+                onClick={exportToCSV}
+                className="flex items-center gap-2 bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-green-700 transition text-sm sm:text-base shadow-md"
+              >
+                <Download size={16} />
+                <span className="hidden sm:inline">CSV</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Month Selector */}
+        <div className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 mb-4 sm:mb-6 border border-purple-100">
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-4">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1">
+              <div className="flex items-center gap-2 text-sm sm:text-base">
+                <Calendar size={18} className="text-purple-600 flex-shrink-0" />
+                <label className="font-semibold text-slate-700 whitespace-nowrap">Month:</label>
+              </div>
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="flex-1 border-2 border-purple-200 rounded-lg px-3 sm:px-4 py-2 font-medium text-slate-700 focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm sm:text-base"
+              >
+                {availableMonths.map(month => (
+                  <option key={month} value={month}>{month}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <input
+                type="text"
+                value={newMonthInput}
+                onChange={(e) => setNewMonthInput(e.target.value)}
+                placeholder="e.g., February 2026"
+                className="flex-1 border-2 border-purple-200 rounded-lg px-3 sm:px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm sm:text-base"
+              />
+              <button
+                onClick={addNewMonth}
+                className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-lg hover:from-purple-700 hover:to-pink-700 transition whitespace-nowrap shadow-md text-sm sm:text-base"
+              >
+                + Add Month
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
+          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-lg p-4 sm:p-6 text-white">
+            <div className="flex items-center justify-between mb-2">
+              <FileText size={24} className="opacity-80" />
+              <span className="text-xs sm:text-sm opacity-80">Total Sales</span>
+            </div>
+            <p className="text-2xl sm:text-3xl font-bold">{monthStats.count}</p>
+            <p className="text-xs sm:text-sm opacity-80 mt-1">transactions</p>
+          </div>
+
+          <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl shadow-lg p-4 sm:p-6 text-white">
+            <div className="flex items-center justify-between mb-2">
+              <DollarSign size={24} className="opacity-80" />
+              <span className="text-xs sm:text-sm opacity-80">Paid</span>
+            </div>
+            <p className="text-2xl sm:text-3xl font-bold">${monthStats.totalPaid.toFixed(0)}</p>
+            <p className="text-xs sm:text-sm opacity-80 mt-1">received</p>
+          </div>
+
+          <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl shadow-lg p-4 sm:p-6 text-white">
+            <div className="flex items-center justify-between mb-2">
+              <TrendingUp size={24} className="opacity-80" />
+              <span className="text-xs sm:text-sm opacity-80">Remaining</span>
+            </div>
+            <p className="text-2xl sm:text-3xl font-bold">${monthStats.totalRemaining.toFixed(0)}</p>
+            <p className="text-xs sm:text-sm opacity-80 mt-1">pending</p>
+          </div>
+
+          <div className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl shadow-lg p-4 sm:p-6 text-white">
+            <div className="flex items-center justify-between mb-2">
+              <Calculator size={24} className="opacity-80" />
+              <span className="text-xs sm:text-sm opacity-80">Salary</span>
+            </div>
+            <p className="text-xl sm:text-2xl font-bold">₨{monthStats.salary.grandTotal.toLocaleString()}</p>
+            <p className="text-xs sm:text-sm opacity-80 mt-1">total earned</p>
+          </div>
+        </div>
+
+        {/* Salary Breakdown */}
+        <div className="bg-gradient-to-br from-purple-600 via-purple-500 to-pink-500 rounded-2xl shadow-xl p-4 sm:p-6 mb-4 sm:mb-6 text-white">
+          <h2 className="text-lg sm:text-xl font-bold mb-4 flex items-center gap-2">
+            <Calculator size={20} />
+            {selectedMonth} Salary Breakdown
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 text-sm sm:text-base">
+            <div className="bg-white bg-opacity-20 rounded-xl p-3 sm:p-4 backdrop-blur-sm">
+              <p className="text-xs sm:text-sm opacity-90 mb-1">Base</p>
+              <p className="font-bold text-base sm:text-lg">₨{monthStats.salary.baseSalary.toLocaleString()}</p>
+            </div>
+            <div className="bg-white bg-opacity-20 rounded-xl p-3 sm:p-4 backdrop-blur-sm">
+              <p className="text-xs sm:text-sm opacity-90 mb-1">Commission</p>
+              <p className="font-bold text-base sm:text-lg">₨{monthStats.salary.commission.toLocaleString()}</p>
+            </div>
+            <div className="bg-white bg-opacity-20 rounded-xl p-3 sm:p-4 backdrop-blur-sm">
+              <p className="text-xs sm:text-sm opacity-90 mb-1">Petrol</p>
+              <p className="font-bold text-base sm:text-lg">₨{monthStats.salary.petrol.toLocaleString()}</p>
+            </div>
+            <div className="bg-white bg-opacity-30 rounded-xl p-3 sm:p-4 backdrop-blur-sm border-2 border-white border-opacity-50">
+              <p className="text-xs sm:text-sm opacity-90 mb-1">Total</p>
+              <p className="font-bold text-base sm:text-lg">₨{monthStats.salary.grandTotal.toLocaleString()}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* All Months Overview */}
+        <div className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 mb-4 sm:mb-6 border border-purple-100">
+          <h2 className="text-lg sm:text-xl font-bold text-slate-800 mb-4">All Months Overview</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            {availableMonths.map(month => {
+              const stats = getMonthStats(month);
+              return (
+                <div 
+                  key={month}
+                  onClick={() => setSelectedMonth(month)}
+                  className={`border-2 rounded-xl p-3 sm:p-4 transition cursor-pointer ${
+                    selectedMonth === month 
+                      ? 'border-purple-500 bg-gradient-to-br from-purple-50 to-pink-50 shadow-md' 
+                      : 'border-slate-200 hover:border-purple-300 hover:shadow-md'
+                  }`}
+                >
+                  <div className="flex justify-between items-start mb-3">
+                    <h3 className="font-bold text-slate-800 text-sm sm:text-base">{month}</h3>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteMonth(month);
+                      }}
+                      className="text-red-500 hover:text-red-700 transition p-1"
+                      title="Delete month"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                  <div className="text-xs sm:text-sm space-y-2 text-slate-600">
+                    <div className="flex justify-between">
+                      <span>Sales:</span>
+                      <span className="font-semibold">{stats.count}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Paid:</span>
+                      <span className="font-semibold text-green-600">${stats.totalPaid.toFixed(0)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Salary:</span>
+                      <span className="font-semibold text-purple-600">₨{stats.salary.grandTotal.toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Sales Table */}
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-purple-100 mb-6">
+          <div className="p-4 sm:p-6 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <h2 className="text-lg sm:text-xl font-bold text-slate-800">Sales Records - {selectedMonth}</h2>
+            <button
+              onClick={addNewSale}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-lg hover:from-purple-700 hover:to-pink-700 transition shadow-md"
+            >
+              <Plus size={18} />
+              Add Sale
+            </button>
+          </div>
+          
+          {/* Mobile Card View */}
+          <div className="block lg:hidden">
+            {filteredSales.length === 0 ? (
+              <div className="p-8 text-center text-slate-500">
+                No sales for {selectedMonth}. Click "Add Sale" to get started!
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-200">
+                {filteredSales.map((sale) => (
+                  <div key={sale.id} className={`p-4 hover:bg-slate-50 transition ${sale.isLocked ? 'bg-green-50' : ''}`}>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-start">
+                        <input
+                          type="text"
+                          value={sale.clientName}
+                          onChange={(e) => updateSale(sale.id, 'clientName', e.target.value)}
+                          disabled={sale.isLocked}
+                          className={`text-base font-semibold border-b-2 px-2 py-1 flex-1 ${
+                            sale.isLocked 
+                              ? 'border-transparent bg-transparent cursor-not-allowed text-slate-700' 
+                              : 'border-transparent hover:border-purple-300 focus:border-purple-500 focus:outline-none'
+                          }`}
+                          placeholder="Client name"
+                        />
+                        <div className="flex gap-2 ml-2">
+                          {sale.isLocked ? (
+                            <button
+                              onClick={() => unlockSale(sale.id)}
+                              className="text-orange-600 hover:text-orange-800 transition p-2"
+                              title="Unlock for editing"
+                            >
+                              <Unlock size={18} />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => lockSale(sale.id)}
+                              className="text-green-600 hover:text-green-800 transition p-2"
+                              title="Save and lock"
+                            >
+                              <Save size={18} />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => deleteSale(sale.id)}
+                            className="text-red-600 hover:text-red-800 transition p-2"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {sale.isLocked && (
+                        <div className="bg-green-100 border border-green-300 rounded-lg px-3 py-2 text-xs text-green-700 flex items-center gap-2">
+                          <Lock size={14} />
+                          <span>This sale is locked. Click unlock to edit.</span>
+                        </div>
+                      )}
+                      
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <label className="text-xs text-slate-500 block mb-1">Email</label>
+                          <input
+                            type="email"
+                            value={sale.email}
+                            onChange={(e) => updateSale(sale.id, 'email', e.target.value)}
+                            disabled={sale.isLocked}
+                            className={`w-full text-sm border rounded px-2 py-1.5 ${
+                              sale.isLocked ? 'border-slate-200 bg-slate-50 cursor-not-allowed' : 'border-slate-300'
+                            }`}
+                            placeholder="Email"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-slate-500 block mb-1">Discord</label>
+                          <input
+                            type="text"
+                            value={sale.discord}
+                            onChange={(e) => updateSale(sale.id, 'discord', e.target.value)}
+                            disabled={sale.isLocked}
+                            className={`w-full text-sm border rounded px-2 py-1.5 ${
+                              sale.isLocked ? 'border-slate-200 bg-slate-50 cursor-not-allowed' : 'border-slate-300'
+                            }`}
+                            placeholder="Discord"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2 text-sm">
+                        <div>
+                          <label className="text-xs text-slate-500 block mb-1">Total ($)</label>
+                          <input
+                            type="number"
+                            value={sale.totalAmount}
+                            onChange={(e) => updateSale(sale.id, 'totalAmount', parseFloat(e.target.value) || 0)}
+                            disabled={sale.isLocked}
+                            className={`w-full text-sm border rounded px-2 py-1.5 ${
+                              sale.isLocked ? 'border-slate-200 bg-slate-50 cursor-not-allowed' : 'border-slate-300'
+                            }`}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-slate-500 block mb-1">Paid ($)</label>
+                          <input
+                            type="number"
+                            value={sale.totalPaid}
+                            onChange={(e) => updateSale(sale.id, 'totalPaid', parseFloat(e.target.value) || 0)}
+                            disabled={sale.isLocked}
+                            className={`w-full text-sm border rounded px-2 py-1.5 ${
+                              sale.isLocked ? 'border-green-200 bg-green-50 cursor-not-allowed' : 'border-green-300'
+                            }`}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-slate-500 block mb-1">Remaining</label>
+                          <input
+                            type="number"
+                            value={sale.totalRemaining}
+                            onChange={(e) => updateSale(sale.id, 'totalRemaining', parseFloat(e.target.value) || 0)}
+                            disabled={sale.isLocked}
+                            className={`w-full text-sm border rounded px-2 py-1.5 font-semibold ${
+                              sale.isLocked 
+                                ? 'border-orange-200 bg-orange-50 text-orange-600 cursor-not-allowed' 
+                                : 'border-orange-300 text-orange-600'
+                            }`}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <label className="text-xs text-slate-500 block mb-1">Type</label>
+                          <select
+                            value={sale.paymentType}
+                            onChange={(e) => updateSale(sale.id, 'paymentType', e.target.value)}
+                            disabled={sale.isLocked}
+                            className={`w-full text-sm border rounded px-2 py-1.5 ${
+                              sale.isLocked ? 'border-slate-200 bg-slate-50 cursor-not-allowed' : 'border-slate-300'
+                            }`}
+                          >
+                            <option>Initial</option>
+                            <option>Remaining</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-xs text-slate-500 block mb-1">Gateway</label>
+                          <input
+                            type="text"
+                            value={sale.gateway}
+                            onChange={(e) => updateSale(sale.id, 'gateway', e.target.value)}
+                            disabled={sale.isLocked}
+                            className={`w-full text-sm border rounded px-2 py-1.5 ${
+                              sale.isLocked ? 'border-slate-200 bg-slate-50 cursor-not-allowed' : 'border-slate-300'
+                            }`}
+                            placeholder="Gateway"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-xs text-slate-500 block mb-1">Product</label>
+                        <input
+                          type="text"
+                          value={sale.product}
+                          onChange={(e) => updateSale(sale.id, 'product', e.target.value)}
+                          disabled={sale.isLocked}
+                          className={`w-full text-sm border rounded px-2 py-1.5 ${
+                            sale.isLocked ? 'border-slate-200 bg-slate-50 cursor-not-allowed' : 'border-slate-300'
+                          }`}
+                          placeholder="Product description"
+                        />
+                      </div>
+
+                      <div className="flex gap-2 items-center">
+                        <div className="flex-1">
+                          <label className="text-xs text-slate-500 block mb-1">Date</label>
+                          <input
+                            type="date"
+                            value={sale.dateOfSale}
+                            onChange={(e) => updateSale(sale.id, 'dateOfSale', e.target.value)}
+                            disabled={sale.isLocked}
+                            className={`w-full text-sm border rounded px-2 py-1.5 ${
+                              sale.isLocked ? 'border-slate-200 bg-slate-50 cursor-not-allowed' : 'border-slate-300'
+                            }`}
+                          />
+                        </div>
+                        <div className="pt-5">
+                          {sale.screenshot ? (
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => setViewingScreenshot(sale.screenshot)}
+                                className="text-blue-600 hover:text-blue-800 transition p-2"
+                              >
+                                <Eye size={20} />
+                              </button>
+                              {!sale.isLocked && (
+                                <button
+                                  onClick={() => removeScreenshot(sale.id)}
+                                  className="text-red-600 hover:text-red-800 transition p-2"
+                                >
+                                  <X size={18} />
+                                </button>
+                              )}
+                            </div>
+                          ) : (
+                            !sale.isLocked && (
+                              <label className="cursor-pointer text-green-600 hover:text-green-800 transition p-2 block">
+                                <Upload size={20} />
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => handleScreenshotUpload(sale.id, e.target.files[0])}
+                                />
+                              </label>
+                            )
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="hidden lg:block overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gradient-to-r from-purple-50 to-pink-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Client</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Email</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Discord</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Type</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Total</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Paid</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Remaining</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Gateway</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Product</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Date</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Screenshot</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {filteredSales.length === 0 ? (
+                  <tr>
+                    <td colSpan="12" className="px-4 py-8 text-center text-slate-500">
+                      No sales for {selectedMonth}. Click "Add Sale" to get started!
+                    </td>
+                  </tr>
+                ) : (
+                  filteredSales.map((sale) => (
+                    <tr key={sale.id} className={`transition ${sale.isLocked ? 'bg-green-50 hover:bg-green-100' : 'hover:bg-purple-50'}`}>
+                      <td className="px-4 py-3">
+                        <input
+                          type="text"
+                          value={sale.clientName}
+                          onChange={(e) => updateSale(sale.id, 'clientName', e.target.value)}
+                          disabled={sale.isLocked}
+                          className={`text-sm border rounded px-2 py-1 w-full ${
+                            sale.isLocked 
+                              ? 'border-slate-200 bg-slate-50 cursor-not-allowed' 
+                              : 'border-slate-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent'
+                          }`}
+                          placeholder="Client"
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <input
+                          type="email"
+                          value={sale.email}
+                          onChange={(e) => updateSale(sale.id, 'email', e.target.value)}
+                          disabled={sale.isLocked}
+                          className={`text-sm border rounded px-2 py-1 w-full ${
+                            sale.isLocked 
+                              ? 'border-slate-200 bg-slate-50 cursor-not-allowed' 
+                              : 'border-slate-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent'
+                          }`}
+                          placeholder="Email"
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <input
+                          type="text"
+                          value={sale.discord}
+                          onChange={(e) => updateSale(sale.id, 'discord', e.target.value)}
+                          disabled={sale.isLocked}
+                          className={`text-sm border rounded px-2 py-1 w-full ${
+                            sale.isLocked 
+                              ? 'border-slate-200 bg-slate-50 cursor-not-allowed' 
+                              : 'border-slate-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent'
+                          }`}
+                          placeholder="Discord"
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <select
+                          value={sale.paymentType}
+                          onChange={(e) => updateSale(sale.id, 'paymentType', e.target.value)}
+                          disabled={sale.isLocked}
+                          className={`text-sm border rounded px-2 py-1 w-full ${
+                            sale.isLocked 
+                              ? 'border-slate-200 bg-slate-50 cursor-not-allowed' 
+                              : 'border-slate-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent'
+                          }`}
+                        >
+                          <option>Initial</option>
+                          <option>Remaining</option>
+                        </select>
+                      </td>
+                      <td className="px-4 py-3">
+                        <input
+                          type="number"
+                          value={sale.totalAmount}
+                          onChange={(e) => updateSale(sale.id, 'totalAmount', parseFloat(e.target.value) || 0)}
+                          disabled={sale.isLocked}
+                          className={`text-sm border rounded px-2 py-1 w-20 ${
+                            sale.isLocked 
+                              ? 'border-slate-200 bg-slate-50 cursor-not-allowed' 
+                              : 'border-slate-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent'
+                          }`}
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <input
+                          type="number"
+                          value={sale.totalPaid}
+                          onChange={(e) => updateSale(sale.id, 'totalPaid', parseFloat(e.target.value) || 0)}
+                          disabled={sale.isLocked}
+                          className={`text-sm border rounded px-2 py-1 w-20 ${
+                            sale.isLocked 
+                              ? 'border-green-200 bg-green-50 cursor-not-allowed' 
+                              : 'border-green-300 focus:ring-2 focus:ring-green-500 focus:border-transparent'
+                          }`}
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <input
+                          type="number"
+                          value={sale.totalRemaining}
+                          onChange={(e) => updateSale(sale.id, 'totalRemaining', parseFloat(e.target.value) || 0)}
+                          disabled={sale.isLocked}
+                          className={`text-sm border rounded px-2 py-1 w-20 font-semibold ${
+                            sale.isLocked 
+                              ? 'border-orange-200 bg-orange-50 text-orange-600 cursor-not-allowed' 
+                              : 'border-orange-300 text-orange-600 focus:ring-2 focus:ring-orange-500 focus:border-transparent'
+                          }`}
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <input
+                          type="text"
+                          value={sale.gateway}
+                          onChange={(e) => updateSale(sale.id, 'gateway', e.target.value)}
+                          disabled={sale.isLocked}
+                          className={`text-sm border rounded px-2 py-1 w-full ${
+                            sale.isLocked 
+                              ? 'border-slate-200 bg-slate-50 cursor-not-allowed' 
+                              : 'border-slate-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent'
+                          }`}
+                          placeholder="Gateway"
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <input
+                          type="text"
+                          value={sale.product}
+                          onChange={(e) => updateSale(sale.id, 'product', e.target.value)}
+                          disabled={sale.isLocked}
+                          className={`text-sm border rounded px-2 py-1 w-full ${
+                            sale.isLocked 
+                              ? 'border-slate-200 bg-slate-50 cursor-not-allowed' 
+                              : 'border-slate-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent'
+                          }`}
+                          placeholder="Product"
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <input
+                          type="date"
+                          value={sale.dateOfSale}
+                          onChange={(e) => updateSale(sale.id, 'dateOfSale', e.target.value)}
+                          disabled={sale.isLocked}
+                          className={`text-sm border rounded px-2 py-1 w-full ${
+                            sale.isLocked 
+                              ? 'border-slate-200 bg-slate-50 cursor-not-allowed' 
+                              : 'border-slate-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent'
+                          }`}
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          {sale.screenshot ? (
+                            <>
+                              <button
+                                onClick={() => setViewingScreenshot(sale.screenshot)}
+                                className="text-blue-600 hover:text-blue-800 transition"
+                                title="View screenshot"
+                              >
+                                <Eye size={18} />
+                              </button>
+                              {!sale.isLocked && (
+                                <button
+                                  onClick={() => removeScreenshot(sale.id)}
+                                  className="text-red-600 hover:text-red-800 transition"
+                                  title="Remove screenshot"
+                                >
+                                  <X size={16} />
+                                </button>
+                              )}
+                            </>
+                          ) : (
+                            !sale.isLocked && (
+                              <label className="cursor-pointer text-green-600 hover:text-green-800 transition">
+                                <Upload size={18} />
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => handleScreenshotUpload(sale.id, e.target.files[0])}
+                                />
+                              </label>
+                            )
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          {sale.isLocked ? (
+                            <button
+                              onClick={() => unlockSale(sale.id)}
+                              className="text-orange-600 hover:text-orange-800 transition"
+                              title="Unlock for editing"
+                            >
+                              <Unlock size={16} />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => lockSale(sale.id)}
+                              className="text-green-600 hover:text-green-800 transition"
+                              title="Save and lock"
+                            >
+                              <Save size={16} />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => deleteSale(sale.id)}
+                            className="text-red-600 hover:text-red-800 transition"
+                            title="Delete sale"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Salary Structure */}
+        <div className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 border border-purple-100">
+          <h3 className="text-lg sm:text-xl font-bold text-slate-800 mb-4">Salary Structure Reference</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm">
+            <div className="border-2 border-slate-200 rounded-xl p-3 sm:p-4 hover:border-purple-300 transition">
+              <p className="font-semibold text-slate-700 mb-2">Below $30:</p>
+              <p className="text-slate-600">No salary</p>
+            </div>
+            <div className="border-2 border-slate-200 rounded-xl p-3 sm:p-4 hover:border-purple-300 transition">
+              <p className="font-semibold text-slate-700 mb-2">$30 - $69:</p>
+              <p className="text-slate-600">Fixed ₨5,000 + ₨2,500 petrol</p>
+            </div>
+            <div className="border-2 border-slate-200 rounded-xl p-3 sm:p-4 hover:border-purple-300 transition">
+              <p className="font-semibold text-slate-700 mb-2">$70 - $399:</p>
+              <p className="text-slate-600">₨5,000 + 12% commission + ₨2,500 petrol</p>
+            </div>
+            <div className="border-2 border-slate-200 rounded-xl p-3 sm:p-4 hover:border-purple-300 transition">
+              <p className="font-semibold text-slate-700 mb-2">$400+:</p>
+              <p className="text-slate-600">₨35,000 + 12% on amount above $400 + ₨2,500 petrol</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Screenshot Modal */}
+        {viewingScreenshot && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
+            onClick={() => setViewingScreenshot(null)}
+          >
+            <div className="relative max-w-4xl max-h-[90vh]">
+              <button
+                onClick={() => setViewingScreenshot(null)}
+                className="absolute -top-10 right-0 text-white hover:text-gray-300 transition bg-black bg-opacity-50 rounded-full p-2"
+              >
+                <X size={24} />
+              </button>
+              <img 
+                src={viewingScreenshot} 
+                alt="Payment Screenshot" 
+                className="max-w-full max-h-[85vh] rounded-2xl shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default SalaryTracker;
